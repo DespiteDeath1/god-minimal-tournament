@@ -1,0 +1,99 @@
+base_model:
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+trust_remote_code: true
+
+load_in_8bit: false
+load_in_4bit: false
+strict: false
+bf16: true
+fp16: false
+tf32: true
+
+adapter: lora
+lora_model_dir:
+lora_r: 32  # Balanced for GRPO
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_linear: true
+lora_target_modules:
+  - all-linear
+
+wandb_project: Gradients-On-Demand
+wandb_mode: offline
+output_dir:
+
+gradient_accumulation_steps: 4
+micro_batch_size: 2  # Smaller for GRPO
+eval_batch_size: 1
+num_epochs: 2  # Fewer epochs for GRPO
+warmup_steps: 50
+learning_rate: 2e-6  # Much lower for GRPO
+logging_steps: 1
+save_strategy: steps
+save_steps: 200
+
+gradient_checkpointing: true
+fsdp:
+fsdp_config:
+
+# GRPO specific - no sample packing
+sample_packing: false
+eval_sample_packing: false
+pad_to_sequence_len: true
+sequence_len: 1024  # Shorter sequences for GRPO
+
+# No flash attention for GRPO
+flash_attention: false
+flash_attn_cross_entropy: false
+flash_attn_rms_norm: false
+
+model_kwargs:
+  attn_implementation: eager  # Not flash for GRPO
+
+dataloader_num_workers: 0
+dataloader_pin_memory: false
+
+deepspeed:
+weight_decay: 0.0
+ddp_timeout: 1800
+ddp_bucket_cap_mb: 25
+
+# Safety settings
+max_grad_norm: 1.0
+seed: 42
+
+# Push to hub settings
+hub_strategy: checkpoint
+push_to_hub: true
+
+# No evaluation for GRPO
+evaluation_strategy: no
+val_set_size: 0
+
+# Dataset processing
+dataset_processes: 4
+group_by_length: false
+
+# TRL configuration for GRPO
+trl:
+  # PPO settings
+  num_ppo_epochs: 4
+  chunk_size: 128
+  mini_batch_size: 2
+  batch_size_per_gpu: 2
+  
+  # Generation settings
+  num_generations: 4  # Conservative number
+  max_completion_length: 256  # Reasonable length
+  
+  # Logging
+  log_with: wandb
+  log_stats: true
+  tracker_kwargs:
+    wandb:
+      project: Gradients-On-Demand
+  
+  # Reward functions (will be populated dynamically)
+  reward_funcs: []
+  reward_weights: []
